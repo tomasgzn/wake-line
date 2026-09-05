@@ -1,0 +1,1122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wake Line</title>
+<meta name="description" content="A retro water-ski slalom game: swing behind the boat, round six buoys, and the rope shortens every pass." />
+<style>
+  html, body { margin: 0; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Monoton&family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
+<style>
+  :root {
+    --bg: #0b0714;
+    --cabinet: #140d22;
+    --panel: #1a1030;
+    --panel-edge: #33224f;
+    --ink: #f3ecff;
+    --muted: #9385b8;
+    --sky-top: #241047;
+    --sky-mid: #7a2b6b;
+    --sky-hot: #ff5c7a;
+    --sun: #ffc24b;
+    --water-far: #123a5c;
+    --water-near: #071f33;
+    --foam: #cdeeff;
+    --cyan: #38e1e1;
+    --magenta: #ff6bc4;
+    --amber: #ffb038;
+    --buoy: #ff6a2c;
+    --guide: #ff3b30;
+    --pregate: #33d17a;
+    --good: #4ade80;
+    --bad: #ff5169;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(130% 90% at 50% -20%, #3a1550 0%, var(--bg) 62%),
+      var(--bg);
+    color: var(--ink);
+    font-family: "Chakra Petch", system-ui, -apple-system, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+
+  .cabinet {
+    display: grid;
+    grid-template-columns: auto 208px;
+    gap: 20px;
+    align-items: start;
+    background: linear-gradient(180deg, #180f2b, #0e0819);
+    border: 1px solid var(--panel-edge);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow:
+      0 0 0 1px rgba(56, 225, 225, 0.06),
+      0 34px 90px -34px rgba(0, 0, 0, 0.92),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .brand {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 2px;
+  }
+
+  .brand h1 {
+    font-family: "Monoton", "Chakra Petch", sans-serif;
+    font-weight: 400;
+    font-size: clamp(26px, 4.2vw, 40px);
+    letter-spacing: 0.04em;
+    margin: 0;
+    color: var(--sky-hot);
+    text-shadow:
+      0 0 6px rgba(255, 92, 122, 0.7),
+      0 0 22px rgba(255, 92, 122, 0.45),
+      0 0 40px rgba(122, 43, 107, 0.5);
+  }
+
+  .brand .tag {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .stage {
+    position: relative;
+    width: 640px;
+    max-width: 100%;
+  }
+
+  canvas#course {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: #071f33;
+    border: 1px solid var(--panel-edge);
+    border-radius: 10px;
+    box-shadow: inset 0 0 70px rgba(0, 0, 0, 0.55);
+    touch-action: none;
+  }
+
+  .crt {
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.13) 0 1px, rgba(0,0,0,0) 1px 3px),
+      radial-gradient(120% 90% at 50% 40%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.4) 100%);
+    mix-blend-mode: multiply;
+  }
+
+  .toast {
+    position: absolute;
+    left: 50%;
+    top: 16px;
+    transform: translate(-50%, -8px);
+    padding: 8px 18px;
+    border-radius: 999px;
+    background: rgba(20, 12, 34, 0.86);
+    border: 1px solid var(--panel-edge);
+    color: var(--ink);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 13px;
+    text-align: center;
+    background: rgba(9, 6, 17, 0.82);
+    backdrop-filter: blur(3px);
+    border-radius: 10px;
+    padding: 20px;
+    overflow: auto;
+  }
+
+  .overlay h3 {
+    font-family: "Chakra Petch", sans-serif;
+    font-weight: 700;
+    font-size: clamp(22px, 4vw, 30px);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin: 0;
+    color: var(--ink);
+  }
+
+  .overlay p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.65;
+    max-width: 340px;
+  }
+  .overlay p b { color: var(--cyan); font-weight: 600; }
+
+  .final {
+    font-family: "IBM Plex Mono", monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 14px;
+    color: var(--amber);
+    letter-spacing: 0.06em;
+  }
+
+  .levelsel { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .levelsel .lbl {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    max-width: 300px;
+  }
+  .chips button {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    background: rgba(26, 16, 48, 0.8);
+    border: 1px solid var(--panel-edge);
+    border-radius: 6px;
+    padding: 5px 9px;
+    cursor: pointer;
+    transition: none;
+  }
+  .chips button:hover { color: var(--ink); border-color: var(--cyan); }
+  .chips button[aria-pressed="true"] {
+    color: #10060f;
+    background: var(--cyan);
+    border-color: var(--cyan);
+    font-weight: 600;
+  }
+  .chips button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+  button.play {
+    font-family: "Chakra Petch", sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #10060f;
+    background: linear-gradient(95deg, var(--sun), var(--sky-hot));
+    border: none;
+    border-radius: 9px;
+    padding: 12px 30px;
+    cursor: pointer;
+    transition: transform 0.12s ease, filter 0.12s ease;
+  }
+  button.play:hover { transform: translateY(-1px); filter: brightness(1.08); }
+  button.play:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+
+  .rail {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .box {
+    background: var(--panel);
+    border: 1px solid var(--panel-edge);
+    border-radius: 12px;
+    padding: 12px 13px;
+  }
+
+  .box h2 {
+    margin: 0 0 9px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .stat { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .stat + .stat { margin-top: 7px; }
+  .stat .k { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  .stat .v {
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 600;
+    font-size: 18px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+
+  .line-big {
+    font-family: "Chakra Petch", sans-serif;
+    font-weight: 700;
+    font-size: 26px;
+    letter-spacing: 0.04em;
+    color: var(--cyan);
+    line-height: 1;
+  }
+  .line-sub {
+    margin-top: 4px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .keys {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 6px 10px;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .keys kbd {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10px;
+    color: var(--ink);
+    background: #241735;
+    border: 1px solid var(--panel-edge);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 1px 5px;
+    white-space: nowrap;
+    text-align: center;
+  }
+
+  .touch {
+    grid-column: 1 / -1;
+    display: none;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .touch button {
+    font-family: "Chakra Petch", sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.14em;
+    color: var(--ink);
+    background: var(--panel);
+    border: 1px solid var(--panel-edge);
+    border-bottom-width: 3px;
+    border-radius: 10px;
+    padding: 16px 0;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+  }
+  .touch button.active { background: #2b1b45; border-bottom-width: 1px; transform: translateY(1px); }
+
+  @media (max-width: 620px) {
+    .cabinet { grid-template-columns: 1fr; }
+    .rail { flex-direction: row; flex-wrap: wrap; }
+    .rail .box { flex: 1; min-width: 132px; }
+    .touch { display: grid; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    button.play, .toast { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cabinet">
+  <div class="brand">
+    <h1>Wake Line</h1>
+    <span class="tag">6 buoys &middot; cut the rope</span>
+  </div>
+
+  <div class="stage">
+    <canvas id="course" width="640" height="460" aria-label="Slalom course, chase view behind the boat"></canvas>
+    <div class="crt" aria-hidden="true"></div>
+    <div class="toast" id="toast" aria-hidden="true"></div>
+    <div class="overlay" id="overlay">
+      <h3 id="ovTitle">Wake Line</h3>
+      <p id="ovText">You're on the rope behind the boat. The <b>green pre-gates</b> are just markers &mdash; you only have to pass through the <b>red entry gate</b>. Then hold an edge to <b>swing wide</b> and round all six skier buoys on the outside, crossing the wake between each. Clear the pass and the rope shortens. <b>One missed buoy ends the run.</b></p>
+      <div class="final" id="ovFinal" hidden></div>
+      <div class="levelsel" id="levelSel">
+        <span class="lbl">Start line</span>
+        <div class="chips" id="chips"></div>
+      </div>
+      <button class="play" id="startBtn">Drop in</button>
+    </div>
+  </div>
+
+  <div class="rail">
+    <div class="box">
+      <h2>Run</h2>
+      <div class="stat"><span class="k">Buoy</span><span class="v" id="hudBuoy">0 / 6</span></div>
+      <div class="stat"><span class="k">Pass</span><span class="v" id="hudPass">1</span></div>
+      <div class="stat"><span class="k">Started</span><span class="v" id="hudStart">15 OFF</span></div>
+    </div>
+    <div class="box">
+      <h2>Tow line</h2>
+      <div class="line-big" id="hudLine">15 OFF</div>
+      <div class="line-sub" id="hudLineSub">18.25 m rope</div>
+    </div>
+    <div class="box">
+      <h2>Score</h2>
+      <div class="stat"><span class="k">Buoys</span><span class="v" id="hudScore">0</span></div>
+      <div class="stat"><span class="k">Best</span><span class="v" id="hudBest">0</span></div>
+    </div>
+    <div class="box">
+      <h2>Controls</h2>
+      <div class="keys">
+        <kbd>&larr; / A</kbd><span>Edge left</span>
+        <kbd>&rarr; / D</kbd><span>Edge right</span>
+        <kbd>P</kbd><span>Pause</span>
+        <kbd>M</kbd><span>Mute</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="touch" id="touch">
+    <button data-dir="-1" aria-label="Edge left">&#9666; EDGE</button>
+    <button data-dir="1" aria-label="Edge right">EDGE &#9656;</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var RM = false;
+  try { RM = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
+
+  var cv = document.getElementById("course");
+  var ctx = cv.getContext("2d");
+  var W = cv.width, H = cv.height;
+
+  // ---- tunables -----------------------------------------------------------
+  var FOCAL = 300;          // projection focal length (px)
+  var CAM_BACK = 7;         // metres the camera sits behind z = 0
+  var CAM_HEIGHT = 2.4;     // camera height above the water (m)
+  var CAM_FOLLOW = 0.62;    // how much the camera pans with the skier (0..1)
+  var HORIZON = 170;        // horizon line, screen y
+
+  var BOAT_AHEAD = 26;      // boat distance ahead of the camera (m, constant)
+  var BOAT_SPEED0 = 13.6;   // boat speed (m/s) ~ 30 mph
+  var BUOY_OFFSET = 11.5;   // buoy distance off the centre line (m, real course)
+  var COURSE_HALF = 13.5;   // painted lane edge (m)
+  var BUOY_GAP = 30;        // longitudinal spacing between buoys (m)
+  var PREROLL = 60;         // run-up before the first buoy (m)
+  var BODY = 2.7;           // reach the skier adds beyond the rope (m)
+
+  var CENTERING = 1.75;     // rope pulling the skier back to centre
+  var CONTROL = 3.0;        // how hard an edge drives the swing
+  var DAMPING = 0.5;        // swing damping
+  var EDGE_EASE = 8;        // how fast the edge engages/releases
+  var THETA_MAX = 1.26;     // ~72 deg: bury the edge past this and you slide out
+  var FORGIVE = 0.9;        // metres of slack when judging a buoy
+  var GUIDE_OFF = 1.15;     // red boat-path buoys, metres either side of centre (real course)
+  var GATE_HALF = 1.35;     // red entry/exit gate balls, metres either side of centre
+  var GATE_FORGIVE = 2.4;   // slack when judging the entry gate
+  var GATE_LEAD = 19;       // distance from buoy 1 to the entry gate (m)
+  var PREGATE_LEAD = 22;    // distance from the entry gate back to the green pre-gates (m)
+
+  var STEPS = [18.25, 16.0, 14.25, 13.0, 12.0, 11.25, 10.75, 10.25];
+  var LABELS = ["15 OFF", "22 OFF", "28 OFF", "32 OFF", "35 OFF", "38 OFF", "39 OFF", "41 OFF"];
+
+  // ---- state ------------------------------------------------------------
+  var state = "idle"; // idle | running | paused | over
+  var theta, omega, edge, edgeTarget;
+  var traveled, boatSpeed, pass, level, ropeLen, buoyIdx, score, best;
+  var buoys, guides, entryGate, exitGate, preGate, water, last, acc, tPrev, slideLock;
+  var startLevel = 1; // which "off" step the player picks to begin from
+
+  best = loadBest();
+
+  function loadBest() {
+    try { return parseInt(localStorage.getItem("wakeline.best"), 10) || 0; } catch (e) { return 0; }
+  }
+  function saveBest() {
+    try { localStorage.setItem("wakeline.best", String(best)); } catch (e) {}
+  }
+
+  // ---- audio (tiny, optional) -----------------------------------------
+  var actx = null, muted = false;
+  function ac() {
+    if (actx) return actx;
+    try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { actx = null; }
+    return actx;
+  }
+  function blip(freq, dur, type, vol) {
+    if (muted) return;
+    var a = ac(); if (!a) return;
+    try {
+      var o = a.createOscillator(), g = a.createGain();
+      o.type = type || "square";
+      o.frequency.setValueAtTime(freq, a.currentTime);
+      g.gain.setValueAtTime(vol || 0.08, a.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + dur);
+      o.connect(g); g.connect(a.destination);
+      o.start(); o.stop(a.currentTime + dur);
+    } catch (e) {}
+  }
+  function chirpUp() { blip(520, 0.12, "square", 0.07); setTimeout(function () { blip(780, 0.12, "square", 0.07); }, 70); }
+  function buzz() { blip(150, 0.22, "sawtooth", 0.09); }
+  function crashSound() { blip(90, 0.4, "sawtooth", 0.11); }
+
+  // ---- projection -----------------------------------------------------
+  var camX = 0;
+  function project(x, z) {
+    var zz = z + CAM_BACK;
+    if (zz < 3) zz = 3;
+    var s = FOCAL / zz;
+    return {
+      x: W / 2 + (x - camX) * s,
+      y: HORIZON + (FOCAL * CAM_HEIGHT) / zz,
+      s: s
+    };
+  }
+
+  function skierZ() { return BOAT_AHEAD - (ropeLen + BODY) * Math.cos(theta); }
+  function skierX() { return (ropeLen + BODY) * Math.sin(theta); }
+
+  // ---- course --------------------------------------------------------
+  // Layout down the boat path: green pre-gate pair (decorative only, never judged),
+  // red entry-gate pair (must pass through),
+  // 6 red boat-path pairs (each aligned with a skier buoy), red exit-gate pair.
+  function layCourse(startPos) {
+    buoys = [];
+    for (var i = 0; i < 6; i++) {
+      buoys.push({
+        pos: startPos + i * BUOY_GAP,
+        side: i % 2 === 0 ? 1 : -1, // buoy 1 to the skier's right
+        st: "pending",
+        flash: 0
+      });
+    }
+    guides = buoys.map(function (b) { return b.pos; }); // 6 red pairs, aligned with the buoys
+    entryGate = { pos: startPos - GATE_LEAD, st: "pending", flash: 0 };
+    exitGate = { pos: buoys[5].pos + GATE_LEAD, st: "done", flash: 0 };
+    preGate = { pos: startPos - GATE_LEAD - PREGATE_LEAD, st: "done", flash: 0 };
+  }
+
+  function newWater() {
+    water = [];
+    for (var i = 0; i < 34; i++) water.push(i * 3.4 + 1.5);
+  }
+
+  // ---- lifecycle ----------------------------------------------------
+  function startGame() {
+    theta = 0; omega = 0; edge = 0; edgeTarget = 0;
+    traveled = 0; boatSpeed = BOAT_SPEED0 + (startLevel - 1) * 0.35;
+    pass = 1; level = startLevel; ropeLen = STEPS[level - 1];
+    buoyIdx = 0; score = 0;
+    slideLock = 0;
+    layCourse(PREROLL);
+    newWater();
+    acc = 0; last = 0; tPrev = 0;
+    state = "running";
+    hideOverlay();
+    updateHUD();
+  }
+
+  function nextPass() {
+    pass += 1;
+    level = Math.min(level + 1, STEPS.length);
+    ropeLen = STEPS[level - 1];
+    if (pass % 2 === 1) boatSpeed += 0.5;
+    buoyIdx = 0;
+    layCourse(traveled + PREROLL * 0.92);
+    toast("Pass " + pass + " · " + LABELS[level - 1]);
+    chirpUp();
+    updateHUD();
+  }
+
+  function judgeGate() {
+    if (Math.abs(skierX()) <= GATE_HALF + GATE_FORGIVE) {
+      entryGate.st = "good";
+    } else {
+      entryGate.st = "miss";
+      entryGate.flash = 1;
+      gameOver("Missed the gates");
+      return;
+    }
+    entryGate.flash = 1;
+  }
+
+  function judgeBuoy(b) {
+    var sx = skierX();
+    var onSide = Math.sign(sx) === b.side && Math.abs(sx) > 1.2;
+    var wide = b.side * sx >= BUOY_OFFSET - FORGIVE;
+    b.flash = 1;
+    if (onSide && wide) {
+      b.st = "good"; score += 1; chirpUp();
+      buoyIdx += 1;
+      updateHUD();
+      if (buoyIdx >= 6) nextPass();
+    } else {
+      b.st = "miss";
+      updateHUD();
+      gameOver(wide ? "Wrong side of buoy " + (buoyIdx + 1) : "Missed buoy " + (buoyIdx + 1));
+    }
+  }
+
+  function gameOver(reason) {
+    state = "over";
+    if (score > best) { best = score; saveBest(); }
+    updateHUD();
+    showOverlay(reason, "You rounded <b>" + score + "</b> buo" + (score === 1 ? "y" : "ys") +
+      " over " + pass + " pass" + (pass === 1 ? "" : "es") + " — from <b>" + LABELS[startLevel - 1] +
+      "</b> to <b>" + LABELS[level - 1] + "</b>.",
+      "SCORE " + score + "    BEST " + best, true);
+    document.getElementById("startBtn").textContent = "Run it back";
+    crashSound();
+  }
+
+  function togglePause() {
+    if (state === "running") {
+      state = "paused";
+      showOverlay("Paused", "The boat idles. Press <b>P</b> or the button to keep skiing.", null, false);
+      document.getElementById("startBtn").textContent = "Resume";
+    } else if (state === "paused") {
+      state = "running";
+      hideOverlay();
+      last = 0;
+    }
+  }
+
+  // ---- update -----------------------------------------------------
+  function update(dt) {
+    // engage / release the edge smoothly
+    edge += (edgeTarget - edge) * Math.min(1, EDGE_EASE * dt);
+
+    // pendulum swing on the rope
+    var steps = 3, h = dt / steps;
+    for (var k = 0; k < steps; k++) {
+      var drive = slideLock > 0 ? 0 : CONTROL * edge;
+      omega += (-CENTERING * Math.sin(theta) + drive - DAMPING * omega) * h;
+      theta += omega * h;
+      if (theta > THETA_MAX || theta < -THETA_MAX) {
+        theta = Math.max(-THETA_MAX, Math.min(THETA_MAX, theta));
+        if (omega * Math.sign(theta) > 0) omega *= -0.15;
+        if (slideLock <= 0) { slideLock = 0.5; toast("Edge slid out"); buzz(); }
+      }
+    }
+    if (slideLock > 0) slideLock -= dt;
+
+    // the boat pulls the course past
+    traveled += boatSpeed * dt;
+    camX = skierX() * CAM_FOLLOW;
+
+    // scroll the water rows
+    for (var i = 0; i < water.length; i++) {
+      water[i] -= boatSpeed * dt;
+      if (water[i] < 1) water[i] += 34 * 3.4;
+    }
+
+    // judge the entry gate, then the active buoy, as each reaches the skier's depth
+    if (state === "running" && entryGate.st === "pending" &&
+        entryGate.pos - traveled <= skierZ()) {
+      judgeGate();
+    }
+    if (state === "running" && buoyIdx < 6) {
+      var b = buoys[buoyIdx];
+      if (b.pos - traveled <= skierZ()) judgeBuoy(b);
+    }
+    for (var j = 0; j < buoys.length; j++) {
+      if (buoys[j].flash > 0) buoys[j].flash = Math.max(0, buoys[j].flash - dt * 1.6);
+    }
+    if (entryGate.flash > 0) entryGate.flash = Math.max(0, entryGate.flash - dt * 1.6);
+    if (exitGate.flash > 0) exitGate.flash = Math.max(0, exitGate.flash - dt * 1.6);
+  }
+
+  // ---- render ---------------------------------------------------
+  function css(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+  var C = {};
+  function cacheColors() {
+    ["--sky-top","--sky-mid","--sky-hot","--sun","--water-far","--water-near",
+     "--foam","--cyan","--magenta","--amber","--buoy","--guide","--pregate","--good","--bad","--ink"].forEach(function (n) {
+      C[n] = css(n);
+    });
+  }
+
+  function drawSky() {
+    var g = ctx.createLinearGradient(0, 0, 0, HORIZON);
+    g.addColorStop(0, C["--sky-top"]);
+    g.addColorStop(0.62, C["--sky-mid"]);
+    g.addColorStop(1, C["--sky-hot"]);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, HORIZON);
+
+    // retro banded sun
+    var sunY = HORIZON - 34, sunR = 46;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, W, HORIZON);
+    ctx.clip();
+    var sg = ctx.createLinearGradient(0, sunY - sunR, 0, sunY + sunR);
+    sg.addColorStop(0, C["--sun"]);
+    sg.addColorStop(1, C["--sky-hot"]);
+    ctx.fillStyle = sg;
+    ctx.beginPath();
+    ctx.arc(W / 2, sunY, sunR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = C["--sky-mid"];
+    for (var i = 0; i < 7; i++) {
+      var yy = sunY + 6 + i * (5 + i * 1.6);
+      ctx.fillRect(W / 2 - sunR, yy, sunR * 2, 3 + i * 0.9);
+    }
+    ctx.restore();
+  }
+
+  function drawWater() {
+    var g = ctx.createLinearGradient(0, HORIZON, 0, H);
+    g.addColorStop(0, C["--water-far"]);
+    g.addColorStop(1, C["--water-near"]);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, HORIZON, W, H - HORIZON);
+
+    // sun glitter on the water near the horizon
+    ctx.save();
+    var cg = ctx.createLinearGradient(0, HORIZON, 0, HORIZON + (H - HORIZON) * 0.5);
+    cg.addColorStop(0, "rgba(255,194,75,0.32)");
+    cg.addColorStop(1, "rgba(255,194,75,0)");
+    ctx.fillStyle = cg;
+    ctx.fillRect(W / 2 - 16, HORIZON, 32, (H - HORIZON) * 0.5);
+    ctx.restore();
+
+    // perspective speed rows
+    ctx.strokeStyle = C["--foam"];
+    for (var i = 0; i < water.length; i++) {
+      var p = project(0, water[i]);
+      if (p.y <= HORIZON + 1 || p.y >= H) continue;
+      ctx.globalAlpha = Math.max(0, Math.min(0.18, (p.y - HORIZON) / (H - HORIZON) * 0.2));
+      ctx.lineWidth = Math.max(0.5, p.s * 0.02);
+      ctx.beginPath();
+      ctx.moveTo(0, p.y);
+      ctx.lineTo(W, p.y);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // lane edges
+    ctx.strokeStyle = "rgba(205,238,255,0.16)";
+    ctx.lineWidth = 2;
+    [-1, 1].forEach(function (sgn) {
+      ctx.beginPath();
+      for (var z = 2; z <= 120; z += 4) {
+        var q = project(sgn * COURSE_HALF, z);
+        if (z === 2) ctx.moveTo(q.x, q.y); else ctx.lineTo(q.x, q.y);
+      }
+      ctx.stroke();
+    });
+  }
+
+  // one pair of buoys on the boat path at longitudinal position `zpos`
+  function drawPair(zpos, halfWidth, col, radFactor) {
+    var z = zpos - traveled;
+    if (z < -CAM_BACK + 1 || z > 150) return;
+    for (var s = -1; s <= 1; s += 2) {
+      var p = project(s * halfWidth, z);
+      var r = Math.max(1, radFactor * p.s);
+      ctx.fillStyle = "rgba(0,0,0,0.28)";
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y + r * 1.3, r * 0.8, r * 1.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.4)";
+      ctx.beginPath();
+      ctx.arc(p.x - r * 0.3, p.y - r * 0.35, r * 0.32, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // the 6 red boat-path pairs, each aligned with a skier buoy
+  function drawGuides() {
+    for (var i = 0; i < guides.length; i++) drawPair(guides[i], GUIDE_OFF, C["--guide"], 0.28);
+  }
+
+  function drawGate(g, base) {
+    var z = g.pos - traveled;
+    if (z < -CAM_BACK + 1 || z > 150) return;
+    var col = g.st === "good" ? C["--good"] : g.st === "miss" ? C["--bad"] : base;
+    var l = project(-GATE_HALF, z), rt = project(GATE_HALF, z);
+
+    // link line across the gate at the water line
+    ctx.strokeStyle = col;
+    ctx.globalAlpha = 0.3;
+    ctx.lineWidth = Math.max(1, l.s * 0.035);
+    ctx.beginPath();
+    ctx.moveTo(l.x, l.y);
+    ctx.lineTo(rt.x, rt.y);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    if (g.flash > 0) {
+      for (var s = -1; s <= 1; s += 2) {
+        var fp = project(s * GATE_HALF, z);
+        var fr = Math.max(1.3, 0.42 * fp.s);
+        ctx.save();
+        ctx.globalAlpha = g.flash * 0.6;
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.arc(fp.x, fp.y, fr * (1.9 + (1 - g.flash) * 2), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+    drawPair(g.pos, GATE_HALF, col, 0.42);
+  }
+
+  function drawBuoy(b) {
+    var z = b.pos - traveled;
+    if (z < -CAM_BACK + 1 || z > 150) return;
+    var p = project(b.side * BUOY_OFFSET, z);
+    var r = Math.max(1.5, 0.5 * p.s);
+    var isTarget = (b.st === "pending" && buoys[buoyIdx] === b);
+
+    // wake reference gate for the active buoy
+    if (isTarget && z < 70) {
+      var top = project(b.side * BUOY_OFFSET, z);
+      ctx.strokeStyle = b.side > 0 ? C["--cyan"] : C["--magenta"];
+      ctx.globalAlpha = 0.5;
+      ctx.lineWidth = Math.max(1, p.s * 0.03);
+      ctx.beginPath();
+      ctx.moveTo(top.x, top.y);
+      ctx.lineTo(top.x, top.y - p.s * 1.6);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      // chevron above
+      var cy = top.y - p.s * 2.1;
+      ctx.fillStyle = b.side > 0 ? C["--cyan"] : C["--magenta"];
+      ctx.beginPath();
+      ctx.moveTo(top.x, cy + Math.max(4, p.s * 0.5));
+      ctx.lineTo(top.x - Math.max(4, p.s * 0.4), cy);
+      ctx.lineTo(top.x + Math.max(4, p.s * 0.4), cy);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // reflection
+    ctx.fillStyle = "rgba(255,106,44,0.25)";
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y + r * 1.5, r * 0.8, r * 1.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    var col = b.st === "good" ? C["--good"] : b.st === "miss" ? C["--bad"] : C["--buoy"];
+    if (b.flash > 0) {
+      ctx.save();
+      ctx.globalAlpha = b.flash * 0.7;
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r * (1.8 + (1 - b.flash) * 2), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.beginPath();
+    ctx.arc(p.x - r * 0.3, p.y - r * 0.35, r * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawBoatAndWake() {
+    var bp = project(0, BOAT_AHEAD);
+    var w = bp.s * 2.4, hh = bp.s * 1.5;
+
+    // wake spreading toward the camera
+    ctx.save();
+    var wob = RM ? 0 : Math.sin(tPrev * 0.006) * 6;
+    var wg = ctx.createLinearGradient(0, bp.y, 0, H);
+    wg.addColorStop(0, "rgba(205,238,255,0.30)");
+    wg.addColorStop(1, "rgba(205,238,255,0.02)");
+    ctx.fillStyle = wg;
+    ctx.beginPath();
+    ctx.moveTo(bp.x - w * 0.3, bp.y + hh * 0.2);
+    ctx.lineTo(bp.x + w * 0.3, bp.y + hh * 0.2);
+    ctx.lineTo(W / 2 + W * 0.55 + wob, H);
+    ctx.lineTo(W / 2 - W * 0.55 - wob, H);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // hull (stern view)
+    ctx.fillStyle = "#e9edf5";
+    ctx.beginPath();
+    ctx.moveTo(bp.x - w / 2, bp.y);
+    ctx.lineTo(bp.x + w / 2, bp.y);
+    ctx.lineTo(bp.x + w * 0.34, bp.y - hh);
+    ctx.lineTo(bp.x - w * 0.34, bp.y - hh);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = C["--sky-hot"];
+    ctx.fillRect(bp.x - w * 0.34, bp.y - hh * 0.42, w * 0.68, hh * 0.2);
+    ctx.fillStyle = "#101019";
+    ctx.fillRect(bp.x - w * 0.08, bp.y - hh * 0.12, w * 0.16, hh * 0.5); // outboard
+    // rooster tails
+    ctx.fillStyle = "rgba(205,238,255,0.7)";
+    for (var s = -1; s <= 1; s += 2) {
+      ctx.beginPath();
+      ctx.moveTo(bp.x + s * w * 0.34, bp.y);
+      ctx.quadraticCurveTo(bp.x + s * w * 0.7, bp.y + hh * 0.1, bp.x + s * w * 0.55, bp.y + hh * 0.9);
+      ctx.quadraticCurveTo(bp.x + s * w * 0.3, bp.y + hh * 0.3, bp.x + s * w * 0.34, bp.y);
+      ctx.fill();
+    }
+  }
+
+  function drawRope(sp) {
+    var bp = project(0, BOAT_AHEAD);
+    var tension = Math.min(1, Math.abs(omega) * 0.5 + Math.abs(Math.sin(theta)));
+    var sag = (1 - tension) * 18;
+    ctx.strokeStyle = tension > 0.55 ? C["--foam"] : "rgba(205,238,255,0.55)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(bp.x, bp.y - 2);
+    ctx.quadraticCurveTo((bp.x + sp.x) / 2, (bp.y + sp.y) / 2 + sag, sp.x, sp.y);
+    ctx.stroke();
+  }
+
+  function drawSkier(sp) {
+    var lean = edge;
+    var k = Math.max(0.55, Math.min(1.8, sp.s / 21));
+    var spd = Math.abs(omega) + 0.3;
+    ctx.save();
+    ctx.translate(sp.x, sp.y);
+    ctx.scale(k, k);
+    ctx.rotate(lean * 0.42);
+
+    // spray off the inside edge
+    ctx.fillStyle = "rgba(205,238,255,0.75)";
+    var dir = lean >= 0 ? -1 : 1;
+    for (var i = 0; i < 6; i++) {
+      var jj = RM ? 0 : (Math.random() - 0.5) * 6;
+      ctx.beginPath();
+      ctx.ellipse(dir * (8 + i * 5), 6 + jj, 5 - i * 0.5, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // ski
+    ctx.fillStyle = C["--amber"];
+    ctx.fillRect(-13, 10, 26, 4);
+    // legs
+    ctx.strokeStyle = "#1c1330";
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(-2, -6); ctx.stroke();
+    // torso
+    ctx.strokeStyle = lean >= 0 ? C["--cyan"] : C["--magenta"];
+    ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.moveTo(-2, -6); ctx.lineTo(1, -24); ctx.stroke();
+    // arms to the rope (toward the boat: up-screen)
+    ctx.strokeStyle = "#1c1330";
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(1, -20); ctx.lineTo(-10 - lean * 6, -30); ctx.stroke();
+    // head
+    ctx.fillStyle = C["--ink"];
+    ctx.beginPath(); ctx.arc(1, -29, 4.5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, W, H);
+    drawSky();
+    drawWater();
+    drawPair(preGate.pos, GATE_HALF, C["--pregate"], 0.4); // green pre-gate pair
+    drawGuides();
+    drawGate(exitGate, C["--guide"]);
+    drawGate(entryGate, C["--guide"]);
+
+    // far -> near so nearer buoys paint over farther ones
+    var sorted = buoys.slice().sort(function (a, b) { return (b.pos - a.pos); });
+    var sp = project(skierX(), skierZ());
+    for (var i = 0; i < sorted.length; i++) {
+      var bz = sorted[i].pos - traveled;
+      if (bz > skierZ()) drawBuoy(sorted[i]);
+    }
+    drawBoatAndWake();
+    drawRope(sp);
+    drawSkier(sp);
+    for (i = 0; i < sorted.length; i++) {
+      bz = sorted[i].pos - traveled;
+      if (bz <= skierZ()) drawBuoy(sorted[i]);
+    }
+
+    // line-tension meter
+    var t = Math.min(1, Math.abs(theta) / THETA_MAX);
+    ctx.fillStyle = "rgba(9,6,17,0.55)";
+    ctx.fillRect(12, H - 22, 120, 10);
+    ctx.fillStyle = t > 0.82 ? C["--bad"] : t > 0.55 ? C["--amber"] : C["--cyan"];
+    ctx.fillRect(12, H - 22, 120 * t, 10);
+    ctx.fillStyle = C["--ink"];
+    ctx.font = "600 9px 'IBM Plex Mono', monospace";
+    ctx.fillText("LINE LOAD", 12, H - 26);
+  }
+
+  // ---- loop -----------------------------------------------------
+  function loop(t) {
+    requestAnimationFrame(loop);
+    tPrev = t;
+    if (state === "running") {
+      if (!last) last = t;
+      var dt = Math.min(0.05, (t - last) / 1000);
+      last = t;
+      update(dt);
+    } else {
+      last = 0;
+    }
+    render();
+  }
+
+  // ---- HUD / overlay -----------------------------------------
+  function updateHUD() {
+    document.getElementById("hudBuoy").textContent = Math.min(buoyIdx, 6) + " / 6";
+    document.getElementById("hudPass").textContent = pass;
+    document.getElementById("hudStart").textContent = LABELS[startLevel - 1];
+    document.getElementById("hudLine").textContent = LABELS[level - 1];
+    document.getElementById("hudLineSub").textContent = ropeLen.toFixed(2) + " m rope";
+    document.getElementById("hudScore").textContent = score;
+    document.getElementById("hudBest").textContent = best;
+  }
+
+  function buildChips() {
+    var box = document.getElementById("chips");
+    box.innerHTML = "";
+    LABELS.forEach(function (lab, idx) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = lab;
+      b.setAttribute("aria-pressed", String(idx + 1 === startLevel));
+      b.addEventListener("click", function () {
+        startLevel = idx + 1;
+        Array.prototype.forEach.call(box.children, function (c, ci) {
+          c.setAttribute("aria-pressed", String(ci === idx));
+        });
+      });
+      box.appendChild(b);
+    });
+  }
+
+  var toastTimer = null;
+  function toast(msg) {
+    var el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove("show"); }, 1400);
+  }
+
+  function showOverlay(title, html, finalText, showLevels) {
+    document.getElementById("ovTitle").textContent = title;
+    document.getElementById("ovText").innerHTML = html;
+    var f = document.getElementById("ovFinal");
+    if (finalText) { f.hidden = false; f.textContent = finalText; } else { f.hidden = true; }
+    document.getElementById("levelSel").hidden = !showLevels;
+    document.getElementById("overlay").hidden = false;
+  }
+  function hideOverlay() { document.getElementById("overlay").hidden = true; }
+
+  // ---- input ---------------------------------------------------
+  var held = { "-1": false, "1": false };
+  function refreshEdge() {
+    edgeTarget = (held["1"] ? 1 : 0) + (held["-1"] ? -1 : 0);
+  }
+
+  function press(dir, on) {
+    held[dir] = on;
+    refreshEdge();
+  }
+
+  document.addEventListener("keydown", function (e) {
+    var k = e.key.toLowerCase();
+    if (k === "p") { e.preventDefault(); if (state === "running" || state === "paused") togglePause(); return; }
+    if (k === "m") { muted = !muted; toast(muted ? "Muted" : "Sound on"); return; }
+    if (state === "idle" || state === "over") {
+      if (k === " " || k === "enter") { e.preventDefault(); startGame(); }
+      return;
+    }
+    if (state !== "running") return;
+    if (k === "arrowleft" || k === "a") { e.preventDefault(); press("-1", true); }
+    else if (k === "arrowright" || k === "d") { e.preventDefault(); press("1", true); }
+  });
+  document.addEventListener("keyup", function (e) {
+    var k = e.key.toLowerCase();
+    if (k === "arrowleft" || k === "a") press("-1", false);
+    else if (k === "arrowright" || k === "d") press("1", false);
+  });
+
+  // touch buttons
+  Array.prototype.forEach.call(document.querySelectorAll("#touch button"), function (btn) {
+    var dir = btn.getAttribute("data-dir");
+    var set = function (on) { return function (ev) {
+      ev.preventDefault();
+      if (state === "running") { press(dir, on); btn.classList.toggle("active", on); }
+    }; };
+    btn.addEventListener("pointerdown", set(true));
+    btn.addEventListener("pointerup", set(false));
+    btn.addEventListener("pointerleave", set(false));
+    btn.addEventListener("pointercancel", set(false));
+  });
+
+  // pointer on the canvas: hold a side to edge that way
+  function canvasEdge(ev, on) {
+    if (state !== "running") return;
+    if (!on) { press("-1", false); press("1", false); return; }
+    var rect = cv.getBoundingClientRect();
+    var left = (ev.clientX - rect.left) < rect.width / 2;
+    press(left ? "-1" : "1", true);
+    press(left ? "1" : "-1", false);
+  }
+  cv.addEventListener("pointerdown", function (e) { e.preventDefault(); canvasEdge(e, true); });
+  cv.addEventListener("pointermove", function (e) { if (e.buttons) canvasEdge(e, true); });
+  window.addEventListener("pointerup", function () { if (state === "running") { press("-1", false); press("1", false); } });
+
+  document.getElementById("startBtn").addEventListener("click", function () {
+    if (state === "paused") { togglePause(); return; }
+    startGame();
+  });
+
+  // ---- boot ---------------------------------------------------
+  cacheColors();
+  buildChips();
+  // idle attract state
+  theta = 0.15; omega = 0; edge = 0; edgeTarget = 0;
+  traveled = 0; boatSpeed = BOAT_SPEED0;
+  pass = 1; level = 1; ropeLen = STEPS[0];
+  buoyIdx = 0; score = 0; slideLock = 0;
+  layCourse(PREROLL);
+  newWater();
+  updateHUD();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

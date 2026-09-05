@@ -1,0 +1,9 @@
+# macOS
+.DS_Store
+
+# Generated: stripped copy of slalom.html for publishing as a Claude Artifact
+slalom.artifact.html
+
+# Scratch / local screenshots
+*.png
+scratchpad/
