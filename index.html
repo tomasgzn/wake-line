@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wake Line — Retro Browser Games</title>
+<meta name="description" content="A small collection of self-contained, retro-styled browser games. No installs, no login — just click and play." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Monoton&family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
+<style>
+  :root {
+    --bg: #0b0714;
+    --panel: #1a1030;
+    --panel-edge: #33224f;
+    --ink: #f3ecff;
+    --muted: #9385b8;
+    --cyan: #38e1e1;
+    --magenta: #ff6bc4;
+    --amber: #ffb038;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: radial-gradient(1200px 600px at 50% -10%, #2a123f 0%, var(--bg) 60%);
+    color: var(--ink);
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8vh 20px 40px;
+  }
+  h1 {
+    font-family: "Monoton", "Chakra Petch", sans-serif;
+    font-weight: 400;
+    font-size: clamp(2.4rem, 8vw, 4.5rem);
+    margin: 0;
+    color: var(--magenta);
+    text-shadow: 0 0 18px rgba(255, 107, 196, 0.55), 0 0 40px rgba(255, 107, 196, 0.25);
+    letter-spacing: 2px;
+    text-align: center;
+  }
+  p.tag {
+    color: var(--muted);
+    margin: 14px 0 40px;
+    text-align: center;
+    max-width: 520px;
+    line-height: 1.6;
+  }
+  .games {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 22px;
+    width: 100%;
+    max-width: 680px;
+  }
+  a.card {
+    display: block;
+    text-decoration: none;
+    color: var(--ink);
+    background: var(--panel);
+    border: 1px solid var(--panel-edge);
+    border-radius: 14px;
+    padding: 26px 24px;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  a.card:hover {
+    transform: translateY(-4px);
+    border-color: var(--cyan);
+    box-shadow: 0 0 24px rgba(56, 225, 225, 0.25);
+  }
+  a.card h2 {
+    font-family: "Chakra Petch", sans-serif;
+    margin: 0 0 6px;
+    font-size: 1.5rem;
+  }
+  a.card .kind {
+    color: var(--amber);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+  a.card p {
+    color: var(--muted);
+    margin: 12px 0 0;
+    line-height: 1.55;
+    font-size: 0.92rem;
+  }
+  footer {
+    margin-top: 48px;
+    color: var(--muted);
+    font-size: 0.8rem;
+    text-align: center;
+  }
+  footer a { color: var(--cyan); }
+</style>
+</head>
+<body>
+  <h1>Wake Line</h1>
+  <p class="tag">A small collection of self-contained retro browser games. No installs, no login — click and play.</p>
+
+  <div class="games">
+    <a class="card" href="slalom.html">
+      <span class="kind">Slalom</span>
+      <h2>Wake Line</h2>
+      <p>Water-ski behind the boat, chase-cam view. Round all six buoys on alternating sides; clear a pass and the rope shortens a notch.</p>
+    </a>
+    <a class="card" href="tetris.html">
+      <span class="kind">Falling blocks</span>
+      <h2>Stackfall</h2>
+      <p>Neon block-stacking arcade. 7-bag randomizer, hold piece, and a ghost projection of the hard drop.</p>
+    </a>
+  </div>
+
+  <footer>
+    Keyboard + touch. Best scores saved locally in your browser.<br />
+    Source: <a href="https://github.com/tomasgzn/wake-line">github.com/tomasgzn/wake-line</a>
+  </footer>
+</body>
+</html>
