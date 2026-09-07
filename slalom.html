@@ -337,6 +337,79 @@
   }
   .touch button.active { background: #2b1b45; border-bottom-width: 1px; transform: translateY(1px); }
 
+  .board .lbl, .nameform .lbl {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .nameform { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+  .namerow { display: flex; gap: 6px; }
+  .namerow input {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+    color: var(--ink);
+    background: rgba(26, 16, 48, 0.9);
+    border: 1px solid var(--panel-edge);
+    border-radius: 6px;
+    padding: 7px 10px;
+    width: 148px;
+  }
+  .namerow input:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
+  .namerow button {
+    font-family: "Chakra Petch", sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #10060f;
+    background: var(--cyan);
+    border: none;
+    border-radius: 6px;
+    padding: 0 14px;
+    cursor: pointer;
+  }
+  .namerow button:disabled { opacity: 0.5; cursor: default; }
+
+  .board { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .board-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    color: var(--ink);
+    width: 264px;
+    max-width: 100%;
+  }
+  .board-list li {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 3px 4px;
+    border-bottom: 1px solid rgba(51, 34, 79, 0.55);
+  }
+  .board-list li.you { color: var(--amber); }
+  .board-list .rank { color: var(--muted); width: 1.6em; text-align: right; }
+  .board-list .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+  .board-list .sc { font-variant-numeric: tabular-nums; }
+
+  .board-mini {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    color: var(--ink);
+    line-height: 1.65;
+  }
+  .board-mini li { display: flex; justify-content: space-between; gap: 8px; }
+  .board-mini li.empty { justify-content: flex-start; color: var(--muted); }
+  .board-mini .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .board-mini .sc { color: var(--muted); font-variant-numeric: tabular-nums; }
+
   @media (max-width: 620px) {
     .cabinet { grid-template-columns: 1fr; }
     .rail { flex-direction: row; flex-wrap: wrap; }
@@ -363,8 +436,19 @@
     <div class="toast" id="toast" aria-hidden="true"></div>
     <div class="overlay" id="overlay">
       <h3 id="ovTitle">Wake Line</h3>
-      <p id="ovText">You're on the rope behind the boat. The <b>green pre-gates</b> are just markers &mdash; you only have to pass through the <b>red entry gate</b>. Then hold an edge to <b>swing wide</b> and round all six skier buoys on the outside, crossing the wake between each. Clear the pass and the rope shortens. <b>One missed buoy ends the run.</b></p>
+      <p id="ovText">You're on the rope behind the boat. The <b>green pre-gates</b> are just markers &mdash; you only have to pass through the <b>red entry gate</b>. Then hold an edge to <b>swing wide</b> and round all six skier buoys on the outside, crossing the wake between each, then ski through the <b>red exit gate</b>. Clear the pass and the rope shortens. <b>One missed buoy or gate ends the run.</b></p>
       <div class="final" id="ovFinal" hidden></div>
+      <div class="nameform" id="nameForm" hidden>
+        <label class="lbl" for="nameInput">Name for the board</label>
+        <div class="namerow">
+          <input id="nameInput" type="text" maxlength="12" placeholder="Your name" autocomplete="off" spellcheck="false" />
+          <button type="button" id="saveScoreBtn">Save</button>
+        </div>
+      </div>
+      <div class="board" id="board" hidden>
+        <span class="lbl">Leaderboard</span>
+        <ol class="board-list" id="boardList"></ol>
+      </div>
       <div class="levelsel" id="levelSel">
         <span class="lbl">Start line</span>
         <div class="chips" id="chips"></div>
@@ -389,6 +473,10 @@
       <h2>Score</h2>
       <div class="stat"><span class="k">Buoys</span><span class="v" id="hudScore">0</span></div>
       <div class="stat"><span class="k">Best</span><span class="v" id="hudBest">0</span></div>
+    </div>
+    <div class="box">
+      <h2>Leaderboard</h2>
+      <ol class="board-mini" id="boardMini"><li class="empty">No runs yet</li></ol>
     </div>
     <div class="box">
       <h2>Controls</h2>
@@ -430,7 +518,7 @@
   var BUOY_OFFSET = 11.5;   // buoy distance off the centre line (m, real course)
   var COURSE_HALF = 13.5;   // painted lane edge (m)
   var BUOY_GAP = 30;        // longitudinal spacing between buoys (m)
-  var PREROLL = 60;         // run-up before the first buoy (m)
+  var PREROLL = 96;         // run-up before the first buoy (m) — long enough to settle before the gate
   var BODY = 2.7;           // reach the skier adds beyond the rope (m)
 
   var CENTERING = 1.75;     // rope pulling the skier back to centre
@@ -462,6 +550,107 @@
   }
   function saveBest() {
     try { localStorage.setItem("wakeline.best", String(best)); } catch (e) {}
+  }
+
+  // ---- leaderboard (persisted) ---------------------------------------
+  var scores = loadScores();
+  var pendingRun = null;
+
+  function loadScores() {
+    try {
+      var v = JSON.parse(localStorage.getItem("wakeline.scores"));
+      return Array.isArray(v) ? v : [];
+    } catch (e) { return []; }
+  }
+  function saveScores() {
+    try { localStorage.setItem("wakeline.scores", JSON.stringify(scores)); } catch (e) {}
+  }
+  function loadName() {
+    try { return localStorage.getItem("wakeline.name") || ""; } catch (e) { return ""; }
+  }
+  function saveName(n) {
+    try { localStorage.setItem("wakeline.name", n); } catch (e) {}
+  }
+  function sortScores(list) {
+    return list.slice().sort(function (a, b) {
+      return (b.score - a.score) || (b.pass - a.pass) || (a.date - b.date);
+    });
+  }
+
+  function renderBoards(highlightId) {
+    var ranked = sortScores(scores);
+
+    var mini = document.getElementById("boardMini");
+    mini.innerHTML = "";
+    if (!ranked.length) {
+      var em = document.createElement("li");
+      em.className = "empty";
+      em.textContent = "No runs yet";
+      mini.appendChild(em);
+    } else {
+      ranked.slice(0, 5).forEach(function (s) {
+        var li = document.createElement("li");
+        var nm = document.createElement("span");
+        nm.className = "nm"; nm.textContent = s.name;
+        var sc = document.createElement("span");
+        sc.className = "sc"; sc.textContent = s.score;
+        li.appendChild(nm); li.appendChild(sc);
+        mini.appendChild(li);
+      });
+    }
+
+    var list = document.getElementById("boardList");
+    list.innerHTML = "";
+    ranked.slice(0, 6).forEach(function (s, i) {
+      var li = document.createElement("li");
+      if (highlightId && s.id === highlightId) li.className = "you";
+      var rk = document.createElement("span");
+      rk.className = "rank"; rk.textContent = (i + 1);
+      var nm = document.createElement("span");
+      nm.className = "nm"; nm.textContent = s.name;
+      var sc = document.createElement("span");
+      sc.className = "sc"; sc.textContent = s.score + " · P" + s.pass;
+      li.appendChild(rk); li.appendChild(nm); li.appendChild(sc);
+      list.appendChild(li);
+    });
+  }
+
+  function setupNameEntry() {
+    pendingRun = { score: score, pass: pass, off: LABELS[level - 1], date: Date.now() };
+    var input = document.getElementById("nameInput");
+    var btn = document.getElementById("saveScoreBtn");
+    input.value = loadName();
+    input.disabled = false;
+    btn.disabled = false;
+    btn.textContent = "Save";
+    document.getElementById("nameForm").hidden = false;
+    document.getElementById("board").hidden = false;
+    renderBoards(null);
+    try { input.focus(); input.select(); } catch (e) {}
+  }
+
+  function commitScore() {
+    if (!pendingRun) return;
+    var input = document.getElementById("nameInput");
+    var name = (input.value || "").trim().slice(0, 12) || "Anon";
+    saveName(name);
+    var entry = {
+      id: "e" + Date.now() + Math.random().toString(36).slice(2, 6),
+      name: name,
+      score: pendingRun.score,
+      pass: pendingRun.pass,
+      off: pendingRun.off,
+      date: pendingRun.date
+    };
+    scores.push(entry);
+    scores = sortScores(scores).slice(0, 50);
+    saveScores();
+    pendingRun = null;
+    input.disabled = true;
+    var btn = document.getElementById("saveScoreBtn");
+    btn.disabled = true;
+    btn.textContent = "Saved ✓";
+    renderBoards(entry.id);
   }
 
   // ---- audio (tiny, optional) -----------------------------------------
@@ -507,7 +696,8 @@
   // ---- course --------------------------------------------------------
   // Layout down the boat path: green pre-gate pair (decorative only, never judged),
   // red entry-gate pair (must pass through),
-  // 6 red boat-path pairs (each aligned with a skier buoy), red exit-gate pair.
+  // 6 red boat-path pairs (each aligned with a skier buoy),
+  // red exit-gate pair (must also pass through to clear the pass).
   function layCourse(startPos) {
     buoys = [];
     for (var i = 0; i < 6; i++) {
@@ -520,7 +710,7 @@
     }
     guides = buoys.map(function (b) { return b.pos; }); // 6 red pairs, aligned with the buoys
     entryGate = { pos: startPos - GATE_LEAD, st: "pending", flash: 0 };
-    exitGate = { pos: buoys[5].pos + GATE_LEAD, st: "done", flash: 0 };
+    exitGate = { pos: buoys[5].pos + GATE_LEAD, st: "pending", flash: 0 };
     preGate = { pos: startPos - GATE_LEAD - PREGATE_LEAD, st: "done", flash: 0 };
   }
 
@@ -562,10 +752,21 @@
     } else {
       entryGate.st = "miss";
       entryGate.flash = 1;
-      gameOver("Missed the gates");
+      gameOver("Missed the entry gate");
       return;
     }
     entryGate.flash = 1;
+  }
+
+  function judgeExitGate() {
+    exitGate.flash = 1;
+    if (Math.abs(skierX()) <= GATE_HALF + GATE_FORGIVE) {
+      exitGate.st = "good";
+      nextPass();
+    } else {
+      exitGate.st = "miss";
+      gameOver("Missed the exit gate");
+    }
   }
 
   function judgeBuoy(b) {
@@ -577,7 +778,7 @@
       b.st = "good"; score += 1; chirpUp();
       buoyIdx += 1;
       updateHUD();
-      if (buoyIdx >= 6) nextPass();
+      if (buoyIdx >= 6) toast("Now through the exit gate");
     } else {
       b.st = "miss";
       updateHUD();
@@ -595,6 +796,7 @@
       "SCORE " + score + "    BEST " + best, true);
     document.getElementById("startBtn").textContent = "Run it back";
     crashSound();
+    setupNameEntry();
   }
 
   function togglePause() {
@@ -646,6 +848,10 @@
     if (state === "running" && buoyIdx < 6) {
       var b = buoys[buoyIdx];
       if (b.pos - traveled <= skierZ()) judgeBuoy(b);
+    }
+    if (state === "running" && buoyIdx >= 6 && exitGate.st === "pending" &&
+        exitGate.pos - traveled <= skierZ()) {
+      judgeExitGate();
     }
     for (var j = 0; j < buoys.length; j++) {
       if (buoys[j].flash > 0) buoys[j].flash = Math.max(0, buoys[j].flash - dt * 1.6);
@@ -1040,6 +1246,8 @@
     var f = document.getElementById("ovFinal");
     if (finalText) { f.hidden = false; f.textContent = finalText; } else { f.hidden = true; }
     document.getElementById("levelSel").hidden = !showLevels;
+    document.getElementById("nameForm").hidden = true;
+    document.getElementById("board").hidden = true;
     document.getElementById("overlay").hidden = false;
   }
   function hideOverlay() { document.getElementById("overlay").hidden = true; }
@@ -1056,6 +1264,7 @@
   }
 
   document.addEventListener("keydown", function (e) {
+    if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
     var k = e.key.toLowerCase();
     if (k === "p") { e.preventDefault(); if (state === "running" || state === "paused") togglePause(); return; }
     if (k === "m") { muted = !muted; toast(muted ? "Muted" : "Sound on"); return; }
@@ -1104,9 +1313,16 @@
     startGame();
   });
 
+  document.getElementById("saveScoreBtn").addEventListener("click", commitScore);
+  document.getElementById("nameInput").addEventListener("keydown", function (e) {
+    e.stopPropagation();
+    if (e.key === "Enter") { e.preventDefault(); commitScore(); }
+  });
+
   // ---- boot ---------------------------------------------------
   cacheColors();
   buildChips();
+  renderBoards(null);
   // idle attract state
   theta = 0.15; omega = 0; edge = 0; edgeTarget = 0;
   traveled = 0; boatSpeed = BOAT_SPEED0;

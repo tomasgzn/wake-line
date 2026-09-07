@@ -53,8 +53,9 @@ Each game's `<script>` is a single IIFE with this layout, top to bottom:
    drawing, split into `drawX()` helpers. `loop(t)` runs both via `requestAnimationFrame`.
 5. Input: keyboard + pointer/touch, dispatched through the `state` machine. Mobile gets
    on-screen buttons and tap-to-edge.
-6. `localStorage` for the single best-score value (`wakeline.best` / the tetris equivalent),
-   always wrapped in try/catch.
+6. `localStorage`, always wrapped in try/catch: `wakeline.best` (best buoy count),
+   `wakeline.scores` (leaderboard: array of `{id,name,score,pass,off,date}`, kept sorted
+   and capped at 50), `wakeline.name` (last name entered) / the tetris equivalent.
 
 ### slalom.html specifics
 
@@ -62,10 +63,15 @@ Each game's `<script>` is a single IIFE with this layout, top to bottom:
   camera. The skier's position is polar — `theta` (swing angle off the rope) and `omega`
   (angular velocity) integrated in `update()`; `skierX()`/`skierZ()` derive world coords.
 - **Course**: `layCourse()` builds 6 buoys (alternating sides), a red entry gate, 6 red
-  boat-path guide pairs, a red exit gate, green pre-gates. `judgeBuoy()`/`judgeGate()`
-  check rounding with `FORGIVE`/`GATE_FORGIVE` slack.
-- **Difficulty**: clearing a full pass calls `nextPass()`, which shortens the rope one
-  notch through `STEPS`/`LABELS` ("15 OFF" → "41 OFF"). Missing a buoy → `gameOver()`.
+  boat-path guide pairs, a red exit gate, green pre-gates. `judgeBuoy()`, `judgeGate()`
+  (entry) and `judgeExitGate()` check rounding/passage with `FORGIVE`/`GATE_FORGIVE` slack.
+  `PREROLL` is the run-up before buoy 1 — long enough to settle before the entry gate.
+- **Difficulty**: rounding buoy 6 then skiing through the exit gate (`judgeExitGate()`)
+  calls `nextPass()`, which shortens the rope one notch through `STEPS`/`LABELS`
+  ("15 OFF" → "41 OFF"). Missing any buoy or either gate → `gameOver()`.
+- **Leaderboard**: `gameOver()` calls `setupNameEntry()`; the overlay collects a name and
+  `commitScore()` writes to `wakeline.scores`. `renderBoards()` fills the rail's
+  `#boardMini` (top 5) and the overlay's `#boardList` (top 6, new entry highlighted).
 - `prefers-reduced-motion` is respected via the `RM` flag.
 
 ### tetris.html specifics
