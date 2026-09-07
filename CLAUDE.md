@@ -9,12 +9,19 @@ with inline CSS and JS — **no build step, no dependencies, no package manager,
 
 - `slalom.html` — "Wake Line", a 2D water-ski slalom game (chase-cam, fake 3D projection).
 - `tetris.html` — "Stackfall", a neon Tetris (7-bag randomizer, hold, ghost piece).
+- `index.html` — landing page linking to both games (the GitHub Pages site root).
 - `slalom.artifact.html` — **generated, git-ignored.** See "Publishing" below.
 
 ## Running
 
 Open the `.html` file directly in a browser. To serve locally: `python3 -m http.server`
 then visit `http://localhost:8000/slalom.html`. There is nothing to build or lint.
+
+## Live site
+
+Published at **https://tomasgzn.github.io/wake-line/** via GitHub Pages (legacy build,
+source: `main` branch, `/` root — no Actions workflow, no login for visitors). Every push
+to `main` redeploys. The repo is **public** for this reason. `index.html` is the site root.
 
 ## Publishing (slalom only)
 

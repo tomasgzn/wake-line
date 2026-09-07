@@ -3,6 +3,10 @@
 A small collection of self-contained, retro-styled browser games. No build step, no
 dependencies — each game is a single HTML file you open directly in a browser.
 
+**Play online (no login):** https://tomasgzn.github.io/wake-line/ — served by GitHub Pages
+from `main` at the repo root; `index.html` is the landing page. Every push to `main`
+redeploys the site.
+
 ## Games
 
 ### `slalom.html` — Wake Line
